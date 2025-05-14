@@ -1,0 +1,16 @@
+[package]
+
+id="hev.IndustriesOfEnceladus"
+name="Industries of Enceladus Compat Port - P Fork"
+version="2.3.0"
+version_major=2
+version_minor=3
+version_bugfix=0
+version_metadata="P_FORK"
+description="IOE_MOD_DESCRIPTION"
+group="gameplay"
+github_homepage="https://github.com/rwqfsfasxc100/Industries-Of-Enceladus-Rewrite"
+github_releases="https://github.com/rwqfsfasxc100/Industries-Of-Enceladus-Rewrite/releases"
+discord_thread="https://discord.com/channels/426287934870781952/1324503298295988327"
+donations_page="https://ko-fi.com/pearshapes"
+wiki_page="https://delta-v.kodera.pl/index.php/Mod:Industries_of_Enceladus"

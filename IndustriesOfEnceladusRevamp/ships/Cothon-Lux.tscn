@@ -1,0 +1,91 @@
+[gd_scene load_steps=7 format=2]
+
+[ext_resource path="res://IndustriesOfEnceladusRevamp/ships/Cothon-Lnd.tscn" type="PackedScene" id=1]
+[ext_resource path="res://ships/lifepod-cd.png" type="Texture" id=2]
+[ext_resource path="res://ships/lifepod-n.png" type="Texture" id=3]
+[ext_resource path="res://shader/ao-spec-difuse-fast.shader" type="Shader" id=4]
+[ext_resource path="res://ships/lifepod-m.png" type="Texture" id=5]
+
+[sub_resource type="ShaderMaterial" id=1]
+shader = ExtResource( 4 )
+shader_param/maxval = 5.0
+shader_param/sparkBias = 0.0
+shader_param/scale = Vector2( 0.5, 1 )
+shader_param/coatColor = Vector3( 0.02, 0.02, 0.02 )
+shader_param/ref = 0.1
+shader_param/roughness = 0.5
+shader_param/reflectiveness = 1.0
+shader_param/shine = 0.3
+shader_param/mipmapBias = 1.0
+shader_param/map = ExtResource( 5 )
+
+[node name="Cothon-Lux" instance=ExtResource( 1 )]
+mass = 77.25
+crewMoraleBonus = 0.2
+shipName = "SHIP_COTHON_LUX"
+crew = 6
+hullPrice = 250000
+processedCargoCapacity = 25000
+model = "COTHON"
+spriteHullPaths = PoolStringArray( "Hull", "SecondPod", "UnderHull" )
+
+[node name="Hull" parent="." index="1"]
+region_rect = Rect2( 0, 212, 3841, 83 )
+
+[node name="SecondPod" type="Sprite" parent="Hull" index="0"]
+material = SubResource( 1 )
+position = Vector2( -56.9231, -127.5 )
+scale = Vector2( 0.24, 0.24 )
+z_index = -1
+texture = ExtResource( 2 )
+normal_map = ExtResource( 3 )
+
+[node name="Front Bumper" parent="." index="3"]
+position = Vector2( 0, -259 )
+
+[node name="Collider" parent="." index="6"]
+visible = false
+
+[node name="Pod" parent="." index="7"]
+visible = false
+position = Vector2( -70, -182 )
+
+[node name="engine-main" parent="." index="12"]
+visible = false
+notAThruster = true
+type = ""
+command = ""
+default = "SYSTEM_NONE"
+toggleCommand = ""
+
+[node name="thruster-bl" parent="." index="15"]
+position = Vector2( -139, -43 )
+rotation = 0.523599
+command = "rf"
+
+[node name="thruster-br" parent="." index="16"]
+position = Vector2( 139, -44 )
+rotation = -0.523599
+command = "lf"
+
+[node name="thruster-l" parent="." index="17" instance_placeholder="res://ships/modules/ThrusterSlot.tscn"]
+position = Vector2( -148, -58 )
+rotation = 1.5708
+z_index = 15
+command = ">r"
+
+[node name="thruster-r" parent="." index="18" instance_placeholder="res://ships/modules/ThrusterSlot.tscn"]
+position = Vector2( 148, -58 )
+rotation = -1.5708
+z_index = 15
+command = "<l"
+
+[node name="thruster-tr" parent="." index="19"]
+rotation = -2.61799
+
+[node name="thruster-tl" parent="." index="20"]
+position = Vector2( -139, -70 )
+rotation = 2.61799
+
+[node name="Light2D" parent="." index="21"]
+visible = true
