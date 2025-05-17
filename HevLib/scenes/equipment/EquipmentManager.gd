@@ -133,11 +133,6 @@ const vanilla_equipment_defaults_for_reference = {
 
 
 
-
-
-
-
-
 # Actual code started
 
 var slots = ModLoader.get_children()
@@ -145,11 +140,13 @@ var slots = ModLoader.get_children()
 var vanilla_equipment = load("res://HevLib/scenes/equipment/vanilla_defaults/equipment.gd").get_script_constant_map()
 
 func _tree_entered():
+	var has = Settings.HevLib["equipment"]["do_sort_equipment_by_price"]
+	var does = 1 if has else 0
 	get_tags()
 	add_slots()
 	add_slot_tags()
 	add_equipment()
-	if Settings.HevLib["equipment"]["do_sort_equipment_by_price"]:
+	if has:
 		sort_slots()
 
 func get_tags():
@@ -160,6 +157,9 @@ func get_tags():
 			if item.get("name") == "EQUIPMENT_TAGS":
 				nodes.append(slot.get("EQUIPMENT_TAGS"))
 		if not nodes == []:
+#			var check = is_current_mod_cached(slot, "EQUIPMENT_TAGS", nodes)
+			
+			
 			for tag in nodes:
 				var slotTypes = tag.get("slot_types",[])
 				var equipmentItems = tag.get("equipment_types",[])
@@ -373,13 +373,14 @@ func add_equipment():
 		if not newSlot == null and newSlot.size() >= 1:
 			for equip in newSlot:
 				equipments.append(equip)
-				
 	for item in display_slots():
 		for equip in equipments:
 				var V2 = equip.duplicate()
 				var does = confirm_equipment(V2, item.slot_type, item.alignment, item.restriction, item.allowed_equipment)
 				if does:
 					item.get_node("VBoxContainer").add_child(V2)
+				else:
+					V2.queue_free()
 
 func sort_slots():
 	var SLOTS = display_slots()
@@ -414,3 +415,19 @@ func display_slots() -> Array:
 		if child.get_parent() == self:
 			list.append(child)
 	return list
+
+func is_current_mod_cached(mod_node: Node, tag_type: String, data) -> bool:
+	var path = mod_node.get_script().get_path()
+	var path_hash = path.hash()
+	var tags_text = str(data)
+	var tags_hash = tags_text.hash()
+	var mod_cache_file = "user://cache/.HevLib_Cache/Equipment_Driver/" + str(path_hash) + "/" + tag_type
+	var mod_cache_folder = "user://cache/.HevLib_Cache/Equipment_Driver/" + str(path_hash) + "/"
+	var file = File.new()
+	file.open(mod_cache_file, File.READ)
+	var current_file_hash = file.get_as_text().hash()
+	file.close()
+	if current_file_hash == tags_hash:
+		return true
+	else:
+		return false
