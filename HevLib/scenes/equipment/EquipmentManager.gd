@@ -1,6 +1,13 @@
 extends VBoxContainer
 
+# Stating HevLib pointers
 var Equipment = preload("res://HevLib/pointers/Equipment.gd")
+var FolderAccess = preload("res://HevLib/pointers/FolderAccess.gd")
+var DataFormat = preload("res://HevLib/pointers/DataFormat.gd")
+
+var cache_folder = "user://cache/.HevLib_Cache/Equipment_Driver/"
+
+var NEW_INSTALL = false
 
 var hardpoint_types = [
 	# Hardpoint slots
@@ -135,22 +142,94 @@ const vanilla_equipment_defaults_for_reference = {
 
 # Actual code started
 
-var slots = ModLoader.get_children()
+var slots := []
 
 var vanilla_equipment = load("res://HevLib/scenes/equipment/vanilla_defaults/equipment.gd").get_script_constant_map()
 
+var has = false
+
 func _tree_entered():
-	var has = Settings.HevLib["equipment"]["do_sort_equipment_by_price"]
+	var sTime = OS.get_system_time_msecs()
+	l("Started checking and modifying equipment")
+	var conv := []
+	var paths = []
+	FolderAccess.__check_folder_exists(cache_folder)
+	var mods = ModLoader.get_children()
+	l("Scanning installed mods for applicable mods")
+	for mod in mods:
+		var variants = mod.get_property_list()
+		var does = false
+		for it in variants:
+			var iname = it.get("name")
+			match iname:
+				"ADD_EQUIPMENT_SLOTS":
+					does = true
+				"ADD_EQUIPMENT_ITEMS":
+					does = true
+				"EQUIPMENT_TAGS":
+					does = true
+				"SLOT_TAGS":
+					does = true
+		if does:
+			var mPath = mod.get_script().get_path()
+			var mHash = mPath.hash()
+			conv.append([mod,mPath,mHash])
+			paths.append(mPath)
+			l("Found mod at %s, labelling as %s" % [mPath, str(mHash)])
+	slots = conv
+	l("Finished scanning mods. %s mods are using HevLib Equipment Driver." % slots.size())
+	var installed_hash = str(str(paths).hash() + str(load("res://HevLib/ModMain.gd").MOD_VERSION_MAJOR).hash() + str(load("res://HevLib/ModMain.gd").MOD_VERSION_MINOR).hash() + str(load("res://HevLib/ModMain.gd").MOD_VERSION_BUGFIX).hash() + str(load("res://HevLib/ModMain.gd").MOD_VERSION_METADATA).hash())
+	var ddFile = cache_folder + "driver_index"
+	var dir = Directory.new()
+	dir.open(cache_folder)
+	var de2 = dir.file_exists(ddFile)
+	if not de2:
+		var f03 = File.new()
+		f03.open(ddFile,File.WRITE)
+		f03.store_string("")
+		f03.close()
+	var hFile = File.new()
+	hFile.open(ddFile, File.READ)
+	var hData = hFile.get_as_text()
+	hFile.close()
+	var de = DataFormat.__compare_with_byte_array(installed_hash, str(hData))
+	if not de:
+		NEW_INSTALL = !de
+		FolderAccess.__recursive_delete(cache_folder)
+		l("Attempting to clear EquipmentDriver cache. Check later logs for success from other processes")
+	l("Handled cache, starting to operate on mods.")
+#func start_processing():
+	has = Settings.HevLib["equipment"]["do_sort_equipment_by_price"]
 	var does = 1 if has else 0
+	l("Starting to operate on mod data. Will slots be sorted? [%s]" % has)
 	get_tags()
 	add_slots()
 	add_slot_tags()
 	add_equipment()
-	if has:
-		sort_slots()
-
+	var finish_time = OS.get_system_time_msecs()
+	var total_time = str(float(finish_time - sTime)/1000)
+	var spl = total_time.split(".")
+	var secs = str(spl[0])
+	var msecs = str(spl[1])
+	while msecs.begins_with("0"):
+		msecs = msecs.substr(1)
+	l("Finished adding equipment. Process took a total time of %s seconds, %s milliseconds" % [secs,msecs])
+	var f2 = File.new()
+	f2.open(ddFile, File.WRITE)
+	f2.store_string(installed_hash)
+	f2.close()
+#	call_deferred("repack",get_parent().get_parent().get_parent().get_parent().get_parent(), "user://cache/.HevLib_Cache/Test.tscn")
+#	var node = get_parent().get_parent().get_parent().get_parent().get_parent()
+#	for main in ModLoader.get_children():
+#		var packs = main.get_property_list()
+#		for item in packs:
+#			var nname = item.get("name")
+#			if nname == "HevLibModMain":
+#				if main.HevLibModMain:
+#					main.repack(node)
 func get_tags():
-	for slot in slots:
+	for its in slots:
+		var slot = its[0]
 		var data = slot.get_property_list()
 		var nodes = []
 		for item in data:
@@ -158,7 +237,7 @@ func get_tags():
 				nodes.append(slot.get("EQUIPMENT_TAGS"))
 		if not nodes == []:
 #			var check = is_current_mod_cached(slot, "EQUIPMENT_TAGS", nodes)
-			
+			l("Adding equipment tags for %s" % str(its[2]))
 			
 			for tag in nodes:
 				var slotTypes = tag.get("slot_types",[])
@@ -192,19 +271,257 @@ func get_tags():
 									slot_defaults[st].append(item)
 						else:
 							slot_defaults.merge({st:slotDefaults.get(st)})
+var slots_that_need_vanilla_validation := []
+var slots_with_cache := []
 
 func add_slots():
-	for slot in slots:
+	for its in slots:
+		var slot = its[0]
+		var mod_hash = str(its[2])
 		var data = slot.get_property_list()
 		var newSlot = null
 		for item in data:
 			if item.get("name") == "ADD_EQUIPMENT_SLOTS":
 				newSlot = slot.get("ADD_EQUIPMENT_SLOTS")
 		if typeof(newSlot) == TYPE_ARRAY:
+			l("Adding slots for %s" % mod_hash)
 			for spt in newSlot:
-				add_child(spt)
+				var slot_name = spt.name
+				var slot_folder = cache_folder + mod_hash + "/ADD_EQUIPMENT_SLOTS/" + slot_name + "/"
+				var ddFile = slot_folder + "data_dictionary"
+				FolderAccess.__check_folder_exists(slot_folder)
+				var dir = Directory.new()
+				dir.open(slot_folder)
+				var does = dir.file_exists(ddFile)
+				if not does:
+					var f2 = File.new()
+					f2.open(ddFile, File.WRITE)
+					f2.store_string("")
+					f2.close()
+				var file = File.new()
+				file.open(ddFile, File.READ_WRITE)
+				var slot_file_data = file.get_as_text()
+				file.close()
+				var slot_data_dictionary = str(spt.data_dictionary)
+				var comp = DataFormat.__compare_with_byte_array(slot_data_dictionary, slot_file_data)
+				if comp and not NEW_INSTALL:
+					slots_with_cache.append(mod_hash + ":" + slot_name)
+					add_child(spt)
+					l("Added slot %s from cache." % slot_name)
+				else:
+					var file2 = File.new()
+					file2.open(ddFile, File.WRITE)
+					file2.store_string(slot_data_dictionary)
+					file2.close()
+					slots_that_need_vanilla_validation.append(mod_hash + ":" + slot_name)
+					add_child(spt)
+					l("Added slot %s without cache, will process and recache during equipment process" % slot_name)
 
 var slot_dictionary_temps = {}
+
+var validated_equipment = {}
+var unvalidated_equipment = {}
+
+func add_equipment():
+	
+	for slot in display_slots():
+		var slot_name = slot.name
+		l("Working on slot %s" % slot_name)
+		l("Adding tags to slot")
+		var current_default_equipment := []
+		if slot.slot_type == "HARDPOINT":
+			var hardpoint = slot.hardpoint_type
+			var items = slot_defaults.get(hardpoint,[])
+			slot.allowed_equipment.append_array(items)
+		else:
+			var items = slot_defaults.get(slot.slot_type,[])
+			slot.allowed_equipment.append_array(items)
+		for add in slot.override_additive:
+			if add in slot.allowed_equipment:
+				pass
+			else:
+				slot.allowed_equipment.append(add)
+		var current = slot.allowed_equipment
+		var rewrite = []
+		for it in current:
+			if it in slot.override_subtractive:
+				pass
+			else:
+				rewrite.append(it)
+		slot.allowed_equipment = rewrite
+	
+	
+	for its in slots:
+		var slot = its[0]
+		var mod_hash = str(its[2])
+		var data = slot.get_property_list()
+		var newSlot = null
+		for item in data:
+			if item.get("name") == "ADD_EQUIPMENT_ITEMS":
+				newSlot = slot.get("ADD_EQUIPMENT_ITEMS")
+		if not newSlot == null and newSlot.size() >= 1:
+			l("Adding equipment for %s" % mod_hash)
+			for equip in newSlot:
+				
+				var slot_name = equip.name
+				var slot_folder = cache_folder + mod_hash + "/ADD_EQUIPMENT_ITEMS/" + slot_name + "/"
+				FolderAccess.__check_folder_exists(slot_folder)
+				var ddFile = slot_folder + "data_dictionary"
+				var dir = Directory.new()
+				dir.open(slot_folder)
+				var does = dir.file_exists(ddFile)
+				if not does:
+					var f2 = File.new()
+					f2.open(ddFile, File.WRITE)
+					f2.store_string("")
+					f2.close()
+				var file = File.new()
+				file.open(ddFile, File.READ)
+				var slot_file_data = file.get_as_text()
+				file.close()
+				var slot_data_dictionary = str(equip.data_dictionary)
+				var comp = DataFormat.__compare_with_byte_array(str(slot_data_dictionary), str(slot_file_data))
+				if comp and not NEW_INSTALL:
+					var slot_appendages = []
+					var indexFile = slot_folder + "index"
+					var d = Directory.new()
+					d.open(slot_folder)
+					var dd = d.file_exists(indexFile)
+					if not dd:
+						var fs = File.new()
+						fs.open(indexFile, File.WRITE)
+						fs.store_string("")
+						fs.close()
+					var f = File.new()
+					f.open(indexFile, File.READ)
+					var index_data = f.get_as_text()
+					f.close()
+					var index = index_data.split("\n")
+					validated_equipment.merge({slot_name:[equip,index]})
+					l("Equipment %s is already cached, appending to cached equipment process list" % slot_name)
+				else:
+					var f = File.new()
+					f.open(slot_folder + "data_dictionary", File.WRITE)
+					f.store_string(str(slot_data_dictionary))
+					f.close()
+					unvalidated_equipment.merge({slot_name:[equip,slot_folder]})
+					l("Equipment %s is not cached, appending to caching process list" % slot_name)
+				
+	
+	
+	
+	for slot in slots_that_need_vanilla_validation:
+		var slot_mod = slot.split(":")
+		var mod = slot_mod[0]
+		var item = get_node(slot_mod[1])
+		var vanilla_store = cache_folder + mod + "/ADD_EQUIPMENT_SLOTS/" + slot_mod[1] + "/vanilla_slots/"
+		l("Adding vanilla equipment to uncached slot %s from mod %s" % [slot_mod[1],mod])
+		FolderAccess.__check_folder_exists(vanilla_store)
+		for v_equipment in vanilla_equipment:
+			var V2 = Equipment.__make_equipment(vanilla_equipment.get(v_equipment))
+			var does = confirm_equipment(V2, item.slot_type, item.alignment, item.restriction, item.allowed_equipment)
+			if does:
+				repack(V2,vanilla_store + v_equipment + ".tscn")
+				item.get_node("VBoxContainer").add_child(V2)
+				l("Vanilla equipment %s is applicable, adding & caching" % v_equipment)
+			else:
+				l("%s was not applicable, skipping" % v_equipment)
+	
+	
+	
+	
+	for slot in slots_with_cache:
+		var slot_mod = slot.split(":")
+		var mod = slot_mod[0]
+		var item = get_node(slot_mod[1])
+		l("Adding vanilla equipment from slot cache of %s from mod %s" % [slot_mod[1],mod])
+		var vanilla_store = cache_folder + mod + "/ADD_EQUIPMENT_SLOTS/" + slot_mod[1] + "/vanilla_slots/"
+		var files = FolderAccess.__fetch_folder_files(vanilla_store, false, true)
+		for file in files:
+			item.get_node("VBoxContainer").add_child(load(file).instance())
+	
+	
+	
+	for slot in display_slots():
+		var slot_name = slot.name
+		
+		
+		var num_of_equipment_added_total = 0
+		var num_of_cached_equipment = 0
+		var num_of_uncached_equipment = 0
+		l("Adding equipment from cache")
+		for equip in validated_equipment:
+			var data = validated_equipment.get(equip)
+			if slot_name in data[1]:
+				slot.get_node("VBoxContainer").add_child(data[0].duplicate())
+				num_of_cached_equipment += 1
+				num_of_equipment_added_total += 1
+				
+		
+		l("Adding non-cached equipment")
+		for equip in unvalidated_equipment:
+			var data = unvalidated_equipment.get(equip)
+			var V2 = data[0].duplicate()
+			var does = confirm_equipment(V2, slot.slot_type, slot.alignment, slot.restriction, slot.allowed_equipment)
+			if does:
+				var folder = data[1]
+				var ddFile = folder + "index"
+				var dir = Directory.new()
+				dir.open(folder)
+				var do = dir.file_exists(ddFile)
+				if not do:
+					var f2 = File.new()
+					f2.open(ddFile,File.WRITE)
+					f2.store_string("")
+					f2.close()
+				var f = File.new()
+				f.open(ddFile, File.READ_WRITE)
+				var sData = f.get_as_text()
+				var returnData = sData + "\n" + slot_name
+				f.store_string(returnData)
+				f.close()
+				slot.get_node("VBoxContainer").add_child(V2)
+#				l("Added %s to slot %s and adding to cache" % [V2.name, slot_name])
+				num_of_equipment_added_total += 1
+				num_of_uncached_equipment += 1
+			else:
+#				l("%s denied from slot %s" % [V2.name, slot_name])
+				V2.queue_free()
+		l("Added %s equipment items to slot %s. [%s from cache, %s added to cache]" % [num_of_equipment_added_total, slot_name, num_of_cached_equipment, num_of_uncached_equipment])
+		
+#		for equip in equipments:
+#				var V2 = equip.duplicate()
+#				var does = confirm_equipment(V2, slot.slot_type, slot.alignment, slot.restriction, slot.allowed_equipment)
+#				if does:
+#					slot.get_node("VBoxContainer").add_child(V2)
+#				else:
+#					V2.queue_free()
+		
+		
+		
+		if has:
+			l("Sorting equipment for slot %s" % slot_name)
+			var items = slot.get_node("VBoxContainer").get_children()
+			var nodePositions = []
+			for item in items:
+				nodePositions.append([item, item.get_index()])
+			var noFail = false
+			var maxIndex = items.size()
+			while noFail == false:
+				var doesFailThisLoop = false
+				for item in slot.get_child(0).get_children():
+					if item.get_index() < 2:
+						pass
+					else:
+						var A = item
+						var B = A.get_parent().get_child(A.get_index() - 1)
+						if A.price < B.price:
+							doesFailThisLoop = true
+							A.get_parent().move_child(A, B.get_index())
+				if doesFailThisLoop:
+					noFail = false
+				else:
+					noFail = true
 
 func add_slot_tags():
 	var slot_tag_pool = {}
@@ -231,7 +548,8 @@ func add_slot_tags():
 					get_node(item).override_additive = content
 				"override_subtractive":
 					get_node(item).override_subtractive = content
-	for slot in slots:
+	for its in slots:
+		var slot = its[0]
 		var data = slot.get_property_list()
 		var nodes = null
 		for item in data:
@@ -290,35 +608,30 @@ func add_slot_tags():
 						pass
 					else:
 						slot_node.override_subtractive.append(over)
-	for item in display_slots():
-		var current_default_equipment := []
-		if item.slot_type == "HARDPOINT":
-			var hardpoint = item.hardpoint_type
-			var items = slot_defaults.get(hardpoint,[])
-			item.allowed_equipment.append_array(items)
-		else:
-			var items = slot_defaults.get(item.slot_type,[])
-			item.allowed_equipment.append_array(items)
-		for add in item.override_additive:
-			if add in item.allowed_equipment:
-				pass
-			else:
-				item.allowed_equipment.append(add)
-		var current = item.allowed_equipment
-		var rewrite = []
-		for it in current:
-			if it in item.override_subtractive:
-				pass
-			else:
-				rewrite.append(it)
-		item.allowed_equipment = rewrite
-		
-		if item.add_vanilla_equipment:
-			for v_equipment in vanilla_equipment:
-				var V2 = Equipment.__make_equipment(vanilla_equipment.get(v_equipment))
-				var does = confirm_equipment(V2, item.slot_type, item.alignment, item.restriction, item.allowed_equipment)
-				if does:
-					item.get_node("VBoxContainer").add_child(V2)
+
+func display_slots() -> Array:
+	var children = self.get_children()
+	var list = []
+	for child in children:
+		if child.get_parent() == self:
+			list.append(child)
+	return list
+
+func is_current_mod_cached(mod_node: Node, tag_type: String, data) -> bool:
+	var path = mod_node.get_script().get_path()
+	var path_hash = path.hash()
+	var tags_text = str(data)
+	var tags_hash = tags_text.hash()
+	var mod_cache_file = cache_folder + str(path_hash) + "/" + tag_type
+	var mod_cache_folder = cache_folder + str(path_hash) + "/"
+	var file = File.new()
+	file.open(mod_cache_file, File.READ)
+	var current_file_hash = file.get_as_text().hash()
+	file.close()
+	if current_file_hash == tags_hash:
+		return true
+	else:
+		return false
 
 func confirm_equipment(equipment_node, slot_type, slot_alignment, slot_restriction, slot_allowed_equipment) -> bool:
 	var e_slot_type = equipment_node.slot_type
@@ -362,72 +675,15 @@ func confirm_equipment(equipment_node, slot_type, slot_alignment, slot_restricti
 	return false
 	
 
-func add_equipment():
-	var equipments = []
-	for slot in slots:
-		var data = slot.get_property_list()
-		var newSlot = null
-		for item in data:
-			if item.get("name") == "ADD_EQUIPMENT_ITEMS":
-				newSlot = slot.get("ADD_EQUIPMENT_ITEMS")
-		if not newSlot == null and newSlot.size() >= 1:
-			for equip in newSlot:
-				equipments.append(equip)
-	for item in display_slots():
-		for equip in equipments:
-				var V2 = equip.duplicate()
-				var does = confirm_equipment(V2, item.slot_type, item.alignment, item.restriction, item.allowed_equipment)
-				if does:
-					item.get_node("VBoxContainer").add_child(V2)
-				else:
-					V2.queue_free()
+func repack(node, save_path):
+	var save = PackedScene.new()
+	var NodeAccess = preload("res://HevLib/pointers/NodeAccess.gd").new()
+	NodeAccess.__claim_child_ownership(node)
+	save.pack(node)
+	var save_folder = save_path.split(save_path.split("/")[save_path.split("/").size() - 1])[0]
+	FolderAccess.__check_folder_exists(save_folder)
+	ResourceSaver.save(save_path, save)
 
-func sort_slots():
-	var SLOTS = display_slots()
-	for slot in SLOTS:
-		var items = slot.get_node("VBoxContainer").get_children()
-		var nodePositions = []
-		for item in items:
-			nodePositions.append([item, item.get_index()])
-		var noFail = false
-		var maxIndex = items.size()
-		while noFail == false:
-			var doesFailThisLoop = false
-			for item in slot.get_child(0).get_children():
-				if item.get_index() < 2:
-					pass
-				else:
-					var A = item
-					var B = A.get_parent().get_child(A.get_index() - 1)
-					if A.price < B.price:
-						doesFailThisLoop = true
-						A.get_parent().move_child(A, B.get_index())
-			if doesFailThisLoop:
-				noFail = false
-			else:
-				noFail = true
-
-
-func display_slots() -> Array:
-	var children = self.get_children()
-	var list = []
-	for child in children:
-		if child.get_parent() == self:
-			list.append(child)
-	return list
-
-func is_current_mod_cached(mod_node: Node, tag_type: String, data) -> bool:
-	var path = mod_node.get_script().get_path()
-	var path_hash = path.hash()
-	var tags_text = str(data)
-	var tags_hash = tags_text.hash()
-	var mod_cache_file = "user://cache/.HevLib_Cache/Equipment_Driver/" + str(path_hash) + "/" + tag_type
-	var mod_cache_folder = "user://cache/.HevLib_Cache/Equipment_Driver/" + str(path_hash) + "/"
-	var file = File.new()
-	file.open(mod_cache_file, File.READ)
-	var current_file_hash = file.get_as_text().hash()
-	file.close()
-	if current_file_hash == tags_hash:
-		return true
-	else:
-		return false
+var MODULE_IDENTIFIER = "Equipment Driver"
+func l(msg:String, ID:String = MODULE_IDENTIFIER, title:String = "HevLib"):
+	Debug.l("[%s %s]: %s" % [title, ID, msg])

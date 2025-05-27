@@ -2,15 +2,15 @@
 
 importer="texture"
 type="StreamTexture"
-path="res://.import/radio_disabled.png-7f310378374933513d1a78ffa4ffca63.stex"
+path="res://.import/radio_disabled.png-7dc7fb29e512fe4ef62a37c3cc241ace.stex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Industries-of-Enceladus-Rewrite---P-FORK/HevLib/ui/themes/icons/non-stex/radio_disabled.png"
-dest_files=[ "res://.import/radio_disabled.png-7f310378374933513d1a78ffa4ffca63.stex" ]
+source_file="res://HevLib/ui/themes/icons/non-stex/radio_disabled.png"
+dest_files=[ "res://.import/radio_disabled.png-7dc7fb29e512fe4ef62a37c3cc241ace.stex" ]
 
 [params]
 

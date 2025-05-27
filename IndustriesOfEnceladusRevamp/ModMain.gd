@@ -5,10 +5,10 @@ extends Node
 const MOD_PRIORITY = -99
 # Name of the mod, used for writing to the logs
 const MOD_NAME = "IoE Compatability Rewrite - P Fork"
-const MOD_VERSION = "2.3.1"
+const MOD_VERSION = "2.3.4"
 const MOD_VERSION_MAJOR = 2
 const MOD_VERSION_MINOR = 3
-const MOD_VERSION_BUGFIX = 1
+const MOD_VERSION_BUGFIX = 4
 const MOD_VERSION_METADATA = ""
 # Path of the mod folder, automatically generated on runtime
 var modPath:String = get_script().resource_path.get_base_dir() + "/"
@@ -63,12 +63,9 @@ func _init(modLoader = ModLoader):
 	
 # replace the Upgrades.tscn containing equipment modifications
 	replaceScene("weapons/WeaponSlot.tscn")
-#	replaceScene("enceladus/Upgrades.tscn")
+	replaceScene("res://IndustriesOfEnceladusRevamp/tagging_assignments/Upgrades.tscn","res://enceladus/Upgrades.tscn")
 	
-	# Adds IoE-specific ships to the event pool
-	replaceScene("story/TheRing.tscn")
-	replaceScene("comms/conversation/subtrees/DIALOG_PIRATE_SUPPORT.tscn")
-
+	
 # install the Shipyard.gd script extension, which loads replacements + new ships
 	shipReplacements()
 	
@@ -86,6 +83,9 @@ func _init(modLoader = ModLoader):
 
 
 func _ready():
+	# Adds IoE-specific ships to the event pool
+	replaceScene("story/TheRing.tscn")
+	replaceScene("comms/conversation/subtrees/DIALOG_PIRATE_SUPPORT.tscn")
 	# Game.tscn should be loaded on ready, separate from TheRing.tscn to allow for other mods to add their own events
 	replaceScene("Game.tscn")
 	made_additions()
@@ -196,9 +196,8 @@ func installScriptExtension(path:String , oldPath:String = "none"):
 
 	childScript.take_over_path(parentPath)
 
-# Func to print messages to the logs
-func l(msg:String, title:String = MOD_NAME):
-	Debug.l("[%s]: %s" % [title, msg])
+func l(msg:String, title:String = MOD_NAME, version:String = MOD_VERSION):
+	Debug.l("[%s V%s]: %s" % [title, version, msg])
 
 func shipReplacements():
 	replaceScene("ships/ATK225-B.tscn")

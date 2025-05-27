@@ -2,15 +2,15 @@
 
 importer="texture"
 type="StreamTexture"
-path="res://.import/icon.png-a9fcd5a58d25f04eb297ad506e53131e.stex"
+path="res://.import/icon.png-f144ccb4e10ad1a54d904c3290638de9.stex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Industries-of-Enceladus-Rewrite---P-FORK/IndustriesOfEnceladusRevamp/icon.png"
-dest_files=[ "res://.import/icon.png-a9fcd5a58d25f04eb297ad506e53131e.stex" ]
+source_file="res://IndustriesOfEnceladusRevamp/icon.png"
+dest_files=[ "res://.import/icon.png-f144ccb4e10ad1a54d904c3290638de9.stex" ]
 
 [params]
 
