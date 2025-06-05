@@ -2,7 +2,7 @@ extends Node
 
 # Set mod priority if you want it to load before/after other mods
 # Mods are loaded from lowest to highest priority, default is 0
-const MOD_PRIORITY = 0
+const MOD_PRIORITY = -INF
 # Name of the mod, used for writing to the logs
 const MOD_NAME = "HevLib Library WeaponSlot Driver Module"
 const MOD_VERSION = "1.0.0"
@@ -10,7 +10,7 @@ const MOD_VERSION_MAJOR = 1
 const MOD_VERSION_MINOR = 0
 const MOD_VERSION_BUGFIX = 0
 const MOD_VERSION_METADATA = ""
-const MOD_IS_LIBRARY = false
+const MOD_IS_LIBRARY = true
 # Path of the mod folder, automatically generated on runtime
 var modPath:String = get_script().resource_path.get_base_dir() + "/"
 # Required var for the replaceScene() func to work

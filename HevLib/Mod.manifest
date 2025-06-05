@@ -2,12 +2,16 @@
 
 id="hev.LIBRARY"
 name="HevLib - P Fork"
-version="1.5.11"
+version="1.6.2"
 version_major=1
-version_minor=5
-version_bugfix=11
+version_minor=6
+version_bugfix=2
 version_metadata=""
 description="HEVLIB_MOD_DESCRIPTION"
 group="library"
 github_homepage="https://github.com/rwqfsfasxc100/Industries-of-Enceladus-Rewrite---P-FORK"
 github_releases="https://github.com/rwqfsfasxc100/Industries-of-Enceladus-Rewrite---P-FORK/releases"
+
+[manifest_definitions]
+
+manifest_version=1
