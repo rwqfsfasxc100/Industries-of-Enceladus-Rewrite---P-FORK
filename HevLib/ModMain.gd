@@ -1,11 +1,11 @@
 extends Node
 
 const MOD_PRIORITY = INF
-const MOD_NAME = "HevLib - P Fork"
-const MOD_VERSION = "1.6.2"
+const MOD_NAME = "HevLib"
+const MOD_VERSION = "1.6.4 - P Fork"
 const MOD_VERSION_MAJOR = 1
 const MOD_VERSION_MINOR = 6
-const MOD_VERSION_BUGFIX = 2
+const MOD_VERSION_BUGFIX = 4
 const MOD_VERSION_METADATA = ""
 const MOD_IS_LIBRARY = true
 const LIBRARY_HIDDEN_BY_DEFAULT = false
@@ -35,7 +35,7 @@ func _ready():
 	file.store_string(load("res://HevLib/pointers/HevLib.gd").__get_library_functionality(true))
 	file.close()
 	file.open("user://cache/.HevLib_Cache/currently_installed_mods.json", File.WRITE)
-	file.store_string(str(load("res://HevLib/pointers/ManifestV2.gd").__get_mod_data(true)))
+	file.store_string(str(load("res://HevLib/pointers/ManifestV2.gd").__get_mod_data(true,true)))
 	file.close()
 	var FolderAccess = preload("res://HevLib/pointers/FolderAccess.gd")
 	var cache_folder = "user://cache/.HevLib_Cache/Equipment_Driver/"
